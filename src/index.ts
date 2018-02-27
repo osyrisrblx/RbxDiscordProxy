@@ -19,8 +19,7 @@ let rates: {
 		errors: number;
 		queue: {
 			payload: string;
-			hookId: string;
-			hookToken: string;
+			token: string;
 		}[];
 	}
 } = {};
@@ -62,16 +61,14 @@ function sendRequest(hookId: string, hookToken: string, payload: string) {
 				if (res.statusCode == 429) {
 					rateData.queue.push({
 						payload: payload,
-						hookId: hookId,
-						hookToken: hookToken,
+						token: hookToken,
 					});
 				}
 			});
 	} else {
 		rateData.queue.push({
 			payload: payload,
-			hookId: hookId,
-			hookToken: hookToken,
+			token: hookToken,
 		});
 	}
 }
@@ -86,7 +83,7 @@ setInterval(() => {
 			for (let i = rateData.queue.length - 1; i >= 0; i--) {
 				if (rateData.remaining > 0) {
 					let hookRequest = rateData.queue.splice(i, 1)[0];
-					sendRequest(hookRequest.hookId, hookRequest.hookToken, hookRequest.payload);
+					sendRequest(key, hookRequest.token, hookRequest.payload);
 				}
 			}
 		}
