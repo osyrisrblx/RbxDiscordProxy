@@ -12,22 +12,21 @@ const DISCORD_REMAINING = DISCORD_PREFIX + "remaining";
 const DISCORD_RESET = DISCORD_PREFIX + "reset";
 
 let rates: {
-	[index: string]: {
+	[key: string]: {
+		token: string;
 		limit: number;
 		remaining: number;
 		reset: number;
 		errors: number;
-		queue: {
-			payload: string;
-			token: string;
-		}[];
+		queue: string[];
 	}
 } = {};
 
-function getRateData(hookId: string) {
+function getRateData(hookId: string, hookToken: string) {
 	let rateData = rates[hookId];
 	if (!rateData) {
 		rateData = {
+			token: hookToken,
 			limit: 0,
 			remaining: 1,
 			reset: -1,
@@ -39,14 +38,13 @@ function getRateData(hookId: string) {
 	return rateData;
 }
 
-function sendRequest(hookId: string, hookToken: string, payload: string) {
-	let rateData = getRateData(hookId);
+async function sendRequest(hookId: string, hookToken: string, payload: string) {
+	let rateData = getRateData(hookId, hookToken);
 	if (rateData.remaining > 0) {
 		rateData.remaining--;
 		request(format(WEBHOOK_TEMPLATE, hookId, hookToken), {
 			method: "post",
 			headers: {
-				["user-agent"]: "",
 				["content-type"]: "application/json"
 			},
 			body: payload,
@@ -59,35 +57,30 @@ function sendRequest(hookId: string, hookToken: string, payload: string) {
 				if (!isNaN(limit)) { rateData.limit = limit; }
 				if (!isNaN(remaining)) { rateData.remaining = remaining; }
 				if (res.statusCode == 429) {
-					rateData.queue.push({
-						payload: payload,
-						token: hookToken,
-					});
+					rateData.queue.push(payload);
 				}
 			});
 	} else {
-		rateData.queue.push({
-			payload: payload,
-			token: hookToken,
-		});
+		rateData.queue.push(payload);
 	}
 }
 
 setInterval(() => {
 	let time = Math.floor(Date.now()/1000);
-	Object.keys(rates).forEach(key => {
+	let keys = Object.keys(rates);
+	for (let i = 0; i < keys.length; i++) {
+		let key = keys[i];
 		let rateData = rates[key];
 		if (rateData.reset !== -1 && time >= rateData.reset) {
 			rateData.remaining = rateData.limit;
 			rateData.reset = -1;
 			for (let i = rateData.queue.length - 1; i >= 0; i--) {
 				if (rateData.remaining > 0) {
-					let hookRequest = rateData.queue.splice(i, 1)[0];
-					sendRequest(key, hookRequest.token, hookRequest.payload);
+					sendRequest(key, rateData.token, rateData.queue.splice(i, 1)[0]);
 				}
 			}
 		}
-	});
+	}
 }, 1000);
 
 const app = express();
@@ -96,7 +89,8 @@ app.use(bodyParser.text({ type: "*/*" }));
 
 app.post("/api/webhooks/:hookId/:hookToken", (req, res) => {
 	let hookId = req.params.hookId;
-	let rateData = getRateData(hookId);
+	let hookToken = req.params.hookToken;
+	let rateData = getRateData(hookId, hookToken);
 	if (rateData.queue.length > MAX_QUEUE_SIZE) {
 		res
 			.status(400)
@@ -106,21 +100,43 @@ app.post("/api/webhooks/:hookId/:hookToken", (req, res) => {
 		res
 			.status(200)
 			.end();
-		sendRequest(hookId, req.params.hookToken, req.body);
+		sendRequest(hookId, hookToken, req.body);
 	}
 });
 
-app.get("/", (req, res) => {
-	let counts: { [index: string]: number } = {};
-	let errors: { [index: string]: number } = {};
-	Object.keys(rates).forEach(key => {
-		counts[key] = rates[key].queue.length;
-		errors[key] = rates[key].errors;
-	});
-	res.json({
-		counts: counts,
-		errors: errors,
-	});
+function getBodyAsync(req: request.Request) {
+	return new Promise<string>(
+		(resolve, reject) => {
+			let body = "";
+			req
+				.on("data", chunk => body += chunk.toString())
+				.on("end", () => resolve(body))
+				.on("error", e => reject(e));
+		}
+	);
+}
+
+app.get("/", async (req, res) => {
+	let result: {
+		name: string,
+		queueSize: number,
+		errorCount: number
+	}[] = [];
+	let keys = Object.keys(rates);
+	for (let i = 0; i < keys.length; i++) {
+		let key = keys[i];
+		let data = rates[key];
+		let name = "UNKNOWN";
+		try {
+			name = JSON.parse(await getBodyAsync(request(format(WEBHOOK_TEMPLATE, key, data.token)))).name;
+		} catch (e) { }
+		result.push({
+			name: name,
+			queueSize: data.queue.length,
+			errorCount: data.errors,
+		});
+	}
+	res.json(result);
 	res.end();
 });
 
