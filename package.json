@@ -1,27 +1,27 @@
 {
-  "name": "rbx-discord-proxy",
-  "version": "1.0.0",
-  "description": "A Discord Proxy server for Roblox usage",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/osyrisrblx/RbxDiscordProxy.git"
-  },
-  "main": "index.js",
-  "scripts": {
-    "start": "node bin/index.js"
-  },
-  "author": "Osyris",
-  "license": "ISC",
-  "dependencies": {
-    "@types/express": "^4.11.1",
-    "@types/request": "^2.47.0",
-    "express": "^4.16.2",
-    "request": "^2.83.0"
-  },
-  "devDependencies": {
-    "nodemon": "^1.17.1",
-    "ts-node": "^5.0.0",
-    "tslint": "^5.9.1",
-    "typescript": "^2.7.2"
-  }
+	"name": "rbx-discord-proxy",
+	"version": "1.0.0",
+	"description": "A Discord Proxy server for Roblox usage",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/osyrisrblx/RbxDiscordProxy.git"
+	},
+	"main": "index.js",
+	"scripts": {
+		"start": "node bin/index.js"
+	},
+	"author": "Osyris",
+	"license": "ISC",
+	"dependencies": {
+		"@types/express": "^4.11.1",
+		"@types/request": "^2.47.0",
+		"express": "^4.16.2",
+		"request": "^2.83.0"
+	},
+	"devDependencies": {
+		"nodemon": "^1.17.1",
+		"ts-node": "^5.0.0",
+		"tslint": "^5.9.1",
+		"typescript": "^2.7.2"
+	}
 }
