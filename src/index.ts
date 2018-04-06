@@ -167,8 +167,11 @@ app.get("/", async (req, res) => {
 
 if (fs.existsSync(BANNED_FILE_PATH)) {
 	console.log("Importing banned.json..");
-	bannedHookIds = JSON.parse(fs.readFileSync(BANNED_FILE_PATH, "utf8"));
+	try {
+		bannedHookIds = JSON.parse(fs.readFileSync(BANNED_FILE_PATH, "utf8"));
+		console.log("Imported banned.json!");
+	} catch (e) {}
 }
 
 console.log("Starting server..");
-app.listen(80);
+app.listen(80, () => console.log("Started server!"));
