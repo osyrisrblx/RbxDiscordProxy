@@ -4,8 +4,8 @@ import fs = require("fs");
 import bodyParser = require("body-parser");
 import { format } from "util";
 
-const MAX_QUEUE_SIZE = process.env.MAX_QUEUE_SIZE ? parseInt(process.env.MAX_QUEUE_SIZE) : 1;
-const MAX_ERRORS = process.env.MAX_ERRORS ? parseInt(process.env.MAX_ERRORS) : 10;
+const MAX_QUEUE_SIZE = process.env.MAX_QUEUE_SIZE ? parseInt(process.env.MAX_QUEUE_SIZE) : 100;
+const MAX_ERRORS = process.env.MAX_ERRORS ? parseInt(process.env.MAX_ERRORS) : 100;
 const WEBHOOK_TEMPLATE = "https://discordapp.com/api/webhooks/%s/%s";
 const DISCORD_PREFIX = "x-ratelimit-";
 const DISCORD_LIMIT = DISCORD_PREFIX + "limit";
