@@ -24,6 +24,8 @@ const BANNED_JSON = JSON.stringify({
 	content: BANNED_NOTIFICATION_TEXT
 });
 
+const ROBLOX_GAME_URL_TEMPLATE = "https://www.roblox.com/games/%d/redirect";
+
 let data: {
 	[key: string]: {
 		name?: string;
@@ -148,7 +150,7 @@ function getBodyAsync(req: request.Request) {
 
 interface Info {
 	name?: string;
-	placeId?: string;
+	link?: string;
 	queueSize?: number;
 	errorCount?: number;
 }
@@ -171,7 +173,9 @@ app.get("/", async (req, res) => {
 			} catch (e) {}
 		}
 		info.name = hookData.name;
-		info.placeId = hookData.placeId;
+		if (hookData.placeId) {
+			info.link = format(ROBLOX_GAME_URL_TEMPLATE, hookData.placeId);
+		}
 		if (hookData.queue.length > 0) {
 			info.queueSize = hookData.queue.length;
 		}
