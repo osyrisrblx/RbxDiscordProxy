@@ -18,6 +18,7 @@ Contact \`Osyris#0001\` for further help if needed.`;
 
 let rates: {
 	[key: string]: {
+		name?: string;
 		token: string;
 		limit: number;
 		remaining: number;
@@ -145,7 +146,10 @@ interface Info {
 }
 
 app.get("/", async (req, res) => {
-	let result: Info[] = [];
+	let result = {
+		hooks: [] as Info[],
+		banned: bannedHookIds
+	};
 	let ids = Object.keys(rates);
 	for (let i = 0; i < ids.length; i++) {
 		let hookId = ids[i];
@@ -157,10 +161,15 @@ app.get("/", async (req, res) => {
 		if (data.errors > 0) {
 			info.errorCount = data.errors;
 		}
-		try {
-			info.name = JSON.parse(await getBodyAsync(request(format(WEBHOOK_TEMPLATE, hookId, data.token)))).name;
-		} catch (e) {}
-		result.push(info);
+		if (!data.name) {
+			try {
+				data.name = JSON.parse(await getBodyAsync(request(format(WEBHOOK_TEMPLATE, hookId, data.token)))).name;
+			} catch (e) {}
+		}
+		if (data.name) {
+			info.name = data.name;
+		}
+		result.hooks.push(info);
 	}
 	res.json(result).end();
 });
