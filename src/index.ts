@@ -4,8 +4,9 @@ import fs = require("fs");
 import bodyParser = require("body-parser");
 import { format } from "util";
 
-const MAX_QUEUE_SIZE = process.env.MAX_QUEUE_SIZE ? parseInt(process.env.MAX_QUEUE_SIZE) : 100;
-const MAX_ERRORS = process.env.MAX_ERRORS ? parseInt(process.env.MAX_ERRORS) : 100;
+const MAX_QUEUE_SIZE = parseInt(process.env.MAX_QUEUE_SIZE || "100");
+const MAX_ERRORS = parseInt(process.env.MAX_ERRORS || "100");
+
 const WEBHOOK_TEMPLATE = "https://discordapp.com/api/webhooks/%s/%s";
 const DISCORD_PREFIX = "x-ratelimit-";
 const DISCORD_LIMIT = DISCORD_PREFIX + "limit";
@@ -67,23 +68,25 @@ async function sendRequest(hookId: string, hookToken: string, payload: string) {
 				["content-type"]: "application/json"
 			},
 			body: payload
-		}).on("response", res => {
-			let reset = Number(res.headers[DISCORD_RESET]);
-			let limit = Number(res.headers[DISCORD_LIMIT]);
-			let remaining = Number(res.headers[DISCORD_REMAINING]);
-			if (!isNaN(reset)) {
-				hookData.reset = reset;
-			}
-			if (!isNaN(limit)) {
-				hookData.limit = limit;
-			}
-			if (!isNaN(remaining)) {
-				hookData.remaining = remaining;
-			}
-			if (res.statusCode == 429) {
-				hookData.queue.push(payload);
-			}
-		});
+		})
+			.on("error", e => hookData.queue.push(payload)) // could this duplicate messages?
+			.on("response", res => {
+				let reset = Number(res.headers[DISCORD_RESET]);
+				let limit = Number(res.headers[DISCORD_LIMIT]);
+				let remaining = Number(res.headers[DISCORD_REMAINING]);
+				if (!isNaN(reset)) {
+					hookData.reset = reset;
+				}
+				if (!isNaN(limit)) {
+					hookData.limit = limit;
+				}
+				if (!isNaN(remaining)) {
+					hookData.remaining = remaining;
+				}
+				if (res.statusCode == 429) {
+					hookData.queue.push(payload);
+				}
+			});
 	} else {
 		hookData.queue.push(payload);
 	}
@@ -113,6 +116,7 @@ const app = express();
 app.use(bodyParser.text({ type: "*/*" }));
 
 app.post("/api/webhooks/:hookId/:hookToken", (req, res) => {
+	res.status(200).end();
 	let hookId = req.params.hookId;
 	let hookToken = req.params.hookToken;
 	if (bannedHookIds.indexOf(hookId) == -1) {
@@ -135,7 +139,6 @@ app.post("/api/webhooks/:hookId/:hookToken", (req, res) => {
 			sendRequest(hookId, hookToken, req.body);
 		}
 	}
-	res.status(200).end();
 });
 
 function getBodyAsync(req: request.Request) {

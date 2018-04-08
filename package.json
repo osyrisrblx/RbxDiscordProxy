@@ -8,7 +8,8 @@
 	},
 	"main": "index.js",
 	"scripts": {
-		"start": "node bin/index.js"
+		"start": "node bin/index.js",
+		"dev": "tsc && node bin/index.js"
 	},
 	"author": "Osyris",
 	"license": "ISC",
