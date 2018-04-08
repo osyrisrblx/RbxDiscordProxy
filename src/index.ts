@@ -69,7 +69,11 @@ async function sendRequest(hookId: string, hookToken: string, payload: string) {
 			},
 			body: payload
 		})
-			.on("error", e => hookData.queue.push(payload)) // could this duplicate messages?
+			.on("error", e => {
+				// could this duplicate messages?
+				console.log("error", e);
+				// hookData.queue.push(payload);
+			})
 			.on("response", res => {
 				let reset = Number(res.headers[DISCORD_RESET]);
 				let limit = Number(res.headers[DISCORD_LIMIT]);
