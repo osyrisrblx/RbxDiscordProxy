@@ -125,11 +125,9 @@ app.post("/api/webhooks/:hookId/:hookToken", (req, res) => {
 	let hookToken = req.params.hookToken;
 	if (bannedHookIds.indexOf(hookId) == -1) {
 		let hookData = getHookData(hookId, hookToken);
-		if (!hookData.placeId) {
-			let placeId = req.headers["roblox-id"];
-			if (placeId && typeof placeId == "string") {
-				hookData.placeId = placeId;
-			}
+		let placeId = req.headers["roblox-id"];
+		if (placeId && typeof placeId == "string") {
+			hookData.placeId = placeId;
 		}
 		if (hookData.queue.length >= MAX_QUEUE_SIZE) {
 			hookData.errors++;
