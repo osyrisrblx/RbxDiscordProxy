@@ -160,8 +160,10 @@ interface Info {
 	errorCount?: number;
 }
 
+let pkgJson = require("./../package.json");
 app.get("/", async (req, res) => {
 	let result = {
+		version: pkgJson.version,
 		hooks: [] as Info[],
 		banned: bannedHookIds
 	};
