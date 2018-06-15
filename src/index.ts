@@ -135,6 +135,7 @@ app.post("/api/webhooks/:hookId/:hookToken", (req, res) => {
 				bannedHookIds.push(hookId);
 				fs.writeFile(BANNED_FILE_PATH, JSON.stringify(bannedHookIds), "utf8", () => {});
 				hookData.queue = [];
+				hookData.remaining = 1;
 				sendRequest(hookId, hookToken, BANNED_JSON);
 			}
 		} else {
@@ -146,8 +147,7 @@ app.post("/api/webhooks/:hookId/:hookToken", (req, res) => {
 function getBodyAsync(req: request.Request) {
 	return new Promise<string>((resolve, reject) => {
 		let body = "";
-		req
-			.on("data", chunk => (body += chunk.toString()))
+		req.on("data", chunk => (body += chunk.toString()))
 			.on("end", () => resolve(body))
 			.on("error", e => reject(e));
 	});
