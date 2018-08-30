@@ -18,7 +18,7 @@ const BANNED_USERNAME = "Error";
 const BANNED_AVATAR_URL = "https://i.imgur.com/zjyzJsb.png";
 const BANNED_NOTIFICATION_TEXT = `This webhook has been banned from the \`osyr.is\` Discord proxy server for violating Discord rate limits too often!
 Please create a new webhook and change your code to reduce how many requests you send.
-Contact \`Osyris#0001\` for further help if needed.`;
+Join the support channel for further help: https://discord.gg/wbmeUex`;
 const BANNED_JSON = JSON.stringify({
 	username: BANNED_USERNAME,
 	avatar_url: BANNED_AVATAR_URL,
