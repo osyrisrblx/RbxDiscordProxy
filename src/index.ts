@@ -40,6 +40,15 @@ let data: {
 	};
 } = {};
 
+const MAX_REQUEST_HISTORY = 1000;
+interface Request {
+	time: number;
+	placeId: string;
+	id: string;
+	payloadLength: number;
+}
+const requestHistory = new Array<Request>();
+
 let bannedHookIds: string[] = [];
 
 function getHookData(hookId: string, hookToken: string) {
@@ -123,6 +132,17 @@ app.post("/api/webhooks/:hookId/:hookToken", (req, res) => {
 	res.status(200).end();
 	let hookId = req.params.hookId;
 	let hookToken = req.params.hookToken;
+
+	requestHistory.unshift({
+		time: Math.floor(Date.now() / 1000),
+		id: hookId,
+		placeId: req.headers["roblox-id"] as string,
+		payloadLength: req.body.length
+	});
+	if (requestHistory.length > MAX_REQUEST_HISTORY) {
+		requestHistory.pop();
+	}
+
 	if (bannedHookIds.indexOf(hookId) == -1) {
 		let hookData = getHookData(hookId, hookToken);
 		let placeId = req.headers["roblox-id"];
@@ -144,6 +164,10 @@ app.post("/api/webhooks/:hookId/:hookToken", (req, res) => {
 	}
 });
 
+app.get("/history", (_, res) =>
+	res.send(requestHistory.map(v => format("%d\t%s\t%s\t%d", v.time, v.id, v.placeId, v.payloadLength)).join("\n"))
+);
+
 function getBodyAsync(req: request.Request) {
 	return new Promise<string>((resolve, reject) => {
 		let body = "";
@@ -154,24 +178,29 @@ function getBodyAsync(req: request.Request) {
 }
 
 interface Info {
+	id?: string;
 	name?: string;
 	link?: string;
 	queueSize?: number;
 	errorCount?: number;
+	limit?: number;
+	remaining?: number;
+	reset?: number;
 }
 
 let pkgJson = require("./../package.json");
 app.get("/", async (req, res) => {
 	let result = {
+		time: Math.floor(Date.now() / 1000),
 		version: pkgJson.version,
-		hooks: [] as Info[],
-		banned: bannedHookIds
+		hooks: [] as Info[]
 	};
 	let ids = Object.keys(data);
 	for (let i = 0; i < ids.length; i++) {
 		let hookId = ids[i];
 		let hookData = data[hookId];
 		let info: Info = {};
+		info.id = hookId;
 		if (!hookData.name) {
 			try {
 				hookData.name = JSON.parse(
@@ -189,6 +218,11 @@ app.get("/", async (req, res) => {
 		if (hookData.errors > 0) {
 			info.errorCount = hookData.errors;
 		}
+
+		info.reset = hookData.reset;
+		info.limit = hookData.limit;
+		info.remaining = hookData.remaining;
+
 		result.hooks.push(info);
 	}
 	res.json(result).end();
