@@ -1,8 +1,10 @@
+import path = require("path");
 import express = require("express");
 import request = require("request");
 import fs = require("fs");
 import bodyParser = require("body-parser");
 import { format } from "util";
+import { trackRequestFailed, trackRequestSuccess, trackUserBanned } from "./Analytics";
 
 const MAX_QUEUE_SIZE = parseInt(process.env.MAX_QUEUE_SIZE || "100");
 const MAX_ERRORS = parseInt(process.env.MAX_ERRORS || "100");
@@ -16,7 +18,7 @@ const DISCORD_RESET = DISCORD_PREFIX + "reset";
 const BANNED_FILE_PATH = "/banned.json";
 const BANNED_USERNAME = "Error";
 const BANNED_AVATAR_URL = "https://i.imgur.com/zjyzJsb.png";
-const BANNED_NOTIFICATION_TEXT = fs.readFileSync("../banned.txt").toString();
+const BANNED_NOTIFICATION_TEXT = fs.readFileSync(path.join(__dirname, "../banned.txt")).toString();
 const BANNED_JSON = JSON.stringify({
 	username: BANNED_USERNAME,
 	avatar_url: BANNED_AVATAR_URL,
@@ -70,9 +72,7 @@ async function sendRequest(hookId: string, hookToken: string, payload: string) {
 			body: payload
 		})
 			.on("error", e => {
-				// could this duplicate messages?
 				console.log("error", e);
-				// hookData.queue.push(payload);
 			})
 			.on("response", res => {
 				let reset = Number(res.headers[DISCORD_RESET]);
@@ -87,7 +87,14 @@ async function sendRequest(hookId: string, hookToken: string, payload: string) {
 				if (!isNaN(remaining)) {
 					hookData.remaining = remaining;
 				}
-				if (res.statusCode == 429) {
+
+				if (res.statusCode === 204) {
+					trackRequestSuccess(hookId);
+				} else {
+					trackRequestFailed(hookId);
+				}
+
+				if (res.statusCode === 429) {
 					hookData.queue.push(payload);
 				}
 			});
@@ -152,16 +159,13 @@ app.post("/api/webhooks/:hookId/:hookToken", (req, res) => {
 				hookData.queue = [];
 				hookData.remaining = 1;
 				sendRequest(hookId, hookToken, BANNED_JSON);
+				trackUserBanned(hookId);
 			}
 		} else {
 			sendRequest(hookId, hookToken, req.body);
 		}
 	}
 });
-
-app.get("/history", (_, res) =>
-	res.send(requestHistory.map(v => format("%d\t%s\t%s\t%d", v.time, v.id, v.placeId, v.payloadLength)).join("\n"))
-);
 
 function getBodyAsync(req: request.Request) {
 	return new Promise<string>((resolve, reject) => {
@@ -183,7 +187,7 @@ interface Info {
 	reset?: number;
 }
 
-let pkgJson = require("./../package.json");
+const pkgJson = require("./../package.json");
 app.get("/", async (req, res) => {
 	let result = {
 		time: Math.floor(Date.now() / 1000),
@@ -218,6 +222,22 @@ app.get("/", async (req, res) => {
 		result.hooks.push(info);
 	}
 	res.json(result).end();
+});
+
+app.get("/api/webhooks/:hookId", (req, res) => {
+	const hookId = req.params.hookId;
+	const hookData = data.get(hookId);
+	if (hookData) {
+		res.json({
+			name: hookData.name,
+			placeId: hookData.placeId,
+			limit: hookData.limit,
+			remaining: hookData.remaining,
+			reset: hookData.reset,
+		}).end();
+	} else {
+		res.status(404).end();
+	}
 });
 
 if (fs.existsSync(BANNED_FILE_PATH)) {

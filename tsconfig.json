@@ -1,7 +1,7 @@
 {
 	"compilerOptions": {
 		"module": "commonjs",
-		"outDir": "bin",
+		"outDir": "out",
 		"rootDir": "src",
 		"strict": true,
 		"target": "ES6",
