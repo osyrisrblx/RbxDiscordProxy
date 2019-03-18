@@ -1,0 +1,3 @@
+This webhook has been banned from the `osyr.is` Discord proxy server for violating Discord rate limits too often!
+Please create a new webhook and change your code to reduce how many requests you send.
+Join the support channel for further help: https://discord.gg/wbmeUex

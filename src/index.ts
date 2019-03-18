@@ -16,9 +16,7 @@ const DISCORD_RESET = DISCORD_PREFIX + "reset";
 const BANNED_FILE_PATH = "/banned.json";
 const BANNED_USERNAME = "Error";
 const BANNED_AVATAR_URL = "https://i.imgur.com/zjyzJsb.png";
-const BANNED_NOTIFICATION_TEXT = `This webhook has been banned from the \`osyr.is\` Discord proxy server for violating Discord rate limits too often!
-Please create a new webhook and change your code to reduce how many requests you send.
-Join the support channel for further help: https://discord.gg/wbmeUex`;
+const BANNED_NOTIFICATION_TEXT = fs.readFileSync("../banned.txt").toString();
 const BANNED_JSON = JSON.stringify({
 	username: BANNED_USERNAME,
 	avatar_url: BANNED_AVATAR_URL,
@@ -27,18 +25,18 @@ const BANNED_JSON = JSON.stringify({
 
 const ROBLOX_GAME_URL_TEMPLATE = "https://www.roblox.com/games/%d/redirect";
 
-let data: {
-	[key: string]: {
-		name?: string;
-		placeId?: string;
-		token: string;
-		limit: number;
-		remaining: number;
-		reset: number;
-		errors: number;
-		queue: string[];
-	};
-} = {};
+interface HookData {
+	name?: string;
+	placeId?: string;
+	token: string;
+	limit: number;
+	remaining: number;
+	reset: number;
+	errors: number;
+	queue: string[];
+}
+
+const data = new Map<string, HookData>();
 
 const MAX_REQUEST_HISTORY = 1000;
 interface Request {
@@ -49,26 +47,19 @@ interface Request {
 }
 const requestHistory = new Array<Request>();
 
-let bannedHookIds: string[] = [];
+let bannedHookIds = new Array<string>();
 
-function getHookData(hookId: string, hookToken: string) {
-	let hookData = data[hookId];
-	if (!hookData) {
-		hookData = {
-			token: hookToken,
-			limit: 0,
-			remaining: 1,
-			reset: -1,
-			errors: 0,
-			queue: []
-		};
-		data[hookId] = hookData;
+function getOrSetDefault<K, V>(map: Map<K, V>, key: K, defaultValue: V) {
+	let value = map.get(key);
+	if (!value) {
+		value = defaultValue;
+		map.set(key, value);
 	}
-	return hookData;
+	return value;
 }
 
 async function sendRequest(hookId: string, hookToken: string, payload: string) {
-	let hookData = getHookData(hookId, hookToken);
+	let hookData = data.get(hookId)!;
 	if (hookData.remaining > 0) {
 		hookData.remaining--;
 		request(format(WEBHOOK_TEMPLATE, hookId, hookToken), {
@@ -108,16 +99,13 @@ async function sendRequest(hookId: string, hookToken: string, payload: string) {
 // process queue
 setInterval(() => {
 	let time = Math.floor(Date.now() / 1000);
-	let keys = Object.keys(data);
-	for (let i = 0; i < keys.length; i++) {
-		let key = keys[i];
-		let hookData = data[key];
+	for (const [hookId, hookData] of data.entries()) {
 		if (hookData.reset !== -1 && time >= hookData.reset) {
 			hookData.remaining = hookData.limit;
 			hookData.reset = -1;
 			for (let i = hookData.queue.length - 1; i >= 0; i--) {
 				if (hookData.remaining > 0) {
-					sendRequest(key, hookData.token, hookData.queue.splice(i, 1)[0]);
+					sendRequest(hookId, hookData.token, hookData.queue.splice(i, 1)[0]);
 				}
 			}
 		}
@@ -144,7 +132,14 @@ app.post("/api/webhooks/:hookId/:hookToken", (req, res) => {
 	}
 
 	if (bannedHookIds.indexOf(hookId) == -1) {
-		let hookData = getHookData(hookId, hookToken);
+		const hookData = getOrSetDefault(data, hookId, {
+			token: hookToken,
+			limit: 0,
+			remaining: 1,
+			reset: -1,
+			errors: 0,
+			queue: []
+		});
 		let placeId = req.headers["roblox-id"];
 		if (placeId && typeof placeId == "string") {
 			hookData.placeId = placeId;
@@ -195,10 +190,7 @@ app.get("/", async (req, res) => {
 		version: pkgJson.version,
 		hooks: [] as Info[]
 	};
-	let ids = Object.keys(data);
-	for (let i = 0; i < ids.length; i++) {
-		let hookId = ids[i];
-		let hookData = data[hookId];
+	for (const [hookId, hookData] of data.entries()) {
 		let info: Info = {};
 		info.id = hookId;
 		if (!hookData.name) {
