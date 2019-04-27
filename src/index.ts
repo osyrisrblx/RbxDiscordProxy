@@ -145,11 +145,6 @@ app.post("/api/webhooks/:hookId/:hookToken", (req, res) => {
 		requestHistory.pop();
 	}
 
-	if (!DEPRECATION_SEEN.has(hookId)) {
-		DEPRECATION_SEEN.add(hookId);
-		sendRequest(hookId, hookToken, DEPRECATION_JSON);
-	}
-
 	if (bannedHookIds.indexOf(hookId) == -1) {
 		const hookData = getOrSetDefault(data, hookId, {
 			token: hookToken,
@@ -163,6 +158,12 @@ app.post("/api/webhooks/:hookId/:hookToken", (req, res) => {
 		if (placeId && typeof placeId == "string") {
 			hookData.placeId = placeId;
 		}
+
+		if (!DEPRECATION_SEEN.has(hookId)) {
+			DEPRECATION_SEEN.add(hookId);
+			sendRequest(hookId, hookToken, DEPRECATION_JSON);
+		}
+
 		if (hookData.queue.length >= MAX_QUEUE_SIZE) {
 			hookData.errors++;
 			if (hookData.errors >= MAX_ERRORS) {
