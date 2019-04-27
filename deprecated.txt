@@ -1,0 +1,3 @@
+As of recently, Discord no longer bans webhooks coming from Roblox.
+The `osyr.is` Discord proxy server will shutdown in one week.
+Please, switch your `osyr.is`-based URLs to use Discord instead.

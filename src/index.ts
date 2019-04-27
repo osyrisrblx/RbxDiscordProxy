@@ -27,6 +27,13 @@ const BANNED_JSON = JSON.stringify({
 
 const ROBLOX_GAME_URL_TEMPLATE = "https://www.roblox.com/games/%d/redirect";
 
+const DEPRECATED_SEEN = new Set<string>();
+const DEPRECATION_JSON = JSON.stringify({
+	username: "Notice",
+	avatar_url: "https://www.freeiconspng.com/uploads/orange-warning-icon-3.png",
+	content: fs.readFileSync(path.join(__dirname, "../deprecated.txt")).toString(),
+});
+
 interface HookData {
 	name?: string;
 	placeId?: string;
@@ -136,6 +143,11 @@ app.post("/api/webhooks/:hookId/:hookToken", (req, res) => {
 	});
 	if (requestHistory.length > MAX_REQUEST_HISTORY) {
 		requestHistory.pop();
+	}
+
+	if (!DEPRECATED_SEEN.has(hookId)) {
+		DEPRECATED_SEEN.add(hookId);
+		sendRequest(hookId, hookToken, DEPRECATION_JSON);
 	}
 
 	if (bannedHookIds.indexOf(hookId) == -1) {
