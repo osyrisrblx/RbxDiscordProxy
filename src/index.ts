@@ -260,5 +260,5 @@ if (fs.existsSync(BANNED_FILE_PATH)) {
 	} catch (e) {}
 }
 
-console.log("Starting server..");
-app.listen(80, () => console.log("Started server!"));
+console.log("Starting server.. [DEPREACTED]");
+app.listen(80, () => console.log("Started server! [DEPREACTED]"));
